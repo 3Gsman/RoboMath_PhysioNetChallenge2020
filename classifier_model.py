@@ -10,6 +10,9 @@ from sklearn import model_selection
 from sklearn import tree
 import joblib
 from sklearn import preprocessing
+from sklearn.multioutput import MultiOutputClassifier
+from sklearn.preprocessing import MultiLabelBinarizer
+from sklearn.ensemble import RandomForestClassifier
 
 # Function to load data from Driver.py
 def load_challenge_data(filename):
@@ -41,7 +44,10 @@ def get_12ECG_features(data, header_data):
 
     # for testing, we included the mean age of 57 if the age is a NaN
     # This value will change as more data is being released
+    
+
     for iline in header_data:
+        labels = []
         if iline.startswith('#Age'):
             tmp_age = iline.split(': ')[1].strip()
             age = int(tmp_age if tmp_age != 'NaN' else 57)
@@ -52,7 +58,9 @@ def get_12ECG_features(data, header_data):
             else:
                 sex=0
         elif iline.startswith('#Dx'):
-            label = iline.split(': ')[1].split(',')[0]
+            label = [iline.split(': ')[1]] #.split(',')[0]
+            #label = iline.split(': ')[1].split(',')[0]
+
 
 
     
@@ -89,66 +97,147 @@ def get_12ECG_features(data, header_data):
     return features,label
 
 
-# Training data input from command parameters
-input_directory = sys.argv[1]
+def classifier_model():
 
-input_files = []
+    # Training data input from command parameters
+    input_directory = sys.argv[1]
 
-for f in os.listdir(input_directory):
-  if os.path.isfile(os.path.join(input_directory, f)) and not f.lower().startswith('.') and f.lower().endswith('mat'):
-    input_files.append(f)
+    input_files = []
 
-data = []
-header_data = []
+    for f in os.listdir(input_directory):
+      if os.path.isfile(os.path.join(input_directory, f)) and not f.lower().startswith('.') and f.lower().endswith('mat'):
+        input_files.append(f)
 
-
-print('Extracting 12ECG features...')
-num_files = len(input_files)
-
-for i, f in enumerate(input_files):
-    print('    {}/{}...'.format(i+1, num_files))
-    tmp_input_file = os.path.join(input_directory, f)
-    data2, header_data2 = load_challenge_data(tmp_input_file)
-    
-    data.append(data2)
-    header_data.append(header_data2)
+    data = []
+    header_data = []
 
 
-file_data = []
-for i in range(len(data)):
-    file_data.append([data[i], header_data[i]])
+    print('Extracting 12ECG features...')
+    num_files = len(input_files)
+
+    for i, f in enumerate(input_files):
+        print('    {}/{}...'.format(i+1, num_files))
+        tmp_input_file = os.path.join(input_directory, f)
+        data2, header_data2 = load_challenge_data(tmp_input_file)
+        
+        data.append(data2)
+        header_data.append(header_data2)
 
 
-features = []
-labels = []
+    file_data = []
+    for i in range(len(data)):
+        file_data.append([data[i], header_data[i]])
 
-for item in file_data:
-  feature,label = get_12ECG_features(item[0],item[1])
-  features.append(feature)
-  labels.append(label)
 
-#Clean the labels
-labels = [w.replace('\n', '') for w in labels]
+    features = []
+    labels = []
 
-#Encoding the labels
-le = preprocessing.LabelEncoder()
-labels2 = le.fit(labels)
-labels2 = le.transform(labels)
+    for item in file_data:
+      feature,label = get_12ECG_features(item[0],item[1])
+      features.append(feature)
+      labels.append(label)
 
-X = features
-Y = labels2
+    print(labels)
 
-test_size = 0.5
-seed = 7
-X_train, X_test, Y_train, Y_test = model_selection.train_test_split(X, Y, test_size=test_size, random_state=seed)
-# Fit the model on training set
-print("Trainning model...")
-model = tree.DecisionTreeClassifier()
-model.fit(X_train, Y_train)
-# save the model to disk
-filename = 'finalized_model.sav'
-joblib.dump(model, filename)
+    #Clean the labels
+    labels = [w[0].replace('\n', '') for w in labels]
+    #labels = [w.replace('\n', '') for w in labels]
+    labels = [i.split(',') for i in labels]
 
-print("Model saved as",filename)
+    print(labels)
 
-print("Script finished")
+    '''
+    uno = 0
+    dos = 0
+    tres = 0
+    otro = 0
+
+
+    for item in labels:
+        if len(item) == 1:
+            uno += 1
+        elif len(item) == 2:
+            dos += 1
+        elif len(item) == 3:
+            tres += 1
+        else:
+            otro += 1
+
+    print(uno)
+    print(dos)
+    print(tres)
+    print(otro)
+
+    # Labels = [['Normal'], ['STD'], ['AF', 'RBBB'], ['I-AVB'], ['STD'], ['LBBB'], ['AF'], ['PVC']]
+    labels3 = []
+
+    for item in labels:
+        multiLab = [0,0,0,0,0,0,0,0,0]
+        for lab in item:
+            if lab == 'AF':
+                multiLab[0] = 1
+            elif lab == 'I-AVB':
+                multiLab[1] = 1
+            elif lab == 'LBBB':
+                multiLab[2] = 1
+            elif lab == 'Normal':
+                multiLab[3] = 1
+            elif lab == 'PAC':
+                multiLab[4] = 1
+            elif lab == 'PVC ':
+                multiLab[5] = 1
+            elif lab == 'RBBB':
+                multiLab[6] = 1
+            elif lab == 'STD - ST':
+                multiLab[7] = 1
+            elif lab == 'STE - ST':
+                multiLab[8] = 1
+            else:
+                pass
+
+        labels3.append(multiLab)
+
+    print(labels3)
+
+    '''
+
+    labels4 = MultiLabelBinarizer().fit_transform(labels)
+
+    print(labels4)
+
+    #Encoding the labels
+    le = preprocessing.LabelEncoder()
+    labels2 = le.fit(labels[0])
+    labels2 = le.transform(labels[0])
+
+    #print(labels2)
+
+    X = features
+    Y = labels4
+
+    test_size = 0.1
+    seed = 7
+    X_train, X_test, Y_train, Y_test = model_selection.train_test_split(X, Y, test_size=test_size, random_state=seed)
+    # Fit the model on training set
+    print("Trainning model...")
+    #model = MultiOutputClassifier(tree.DecisionTreeClassifier())
+    model = MultiOutputClassifier(RandomForestClassifier())
+    model.fit(X_train, Y_train)
+    # save the model to disk
+    filename = 'finalized_model.sav'
+    joblib.dump(model, filename)
+
+    print("Model saved as",filename)
+
+
+    from sklearn.metrics import classification_report,confusion_matrix
+    predictions=model.predict(X_test)
+    print(predictions)
+    print(classification_report(Y_test,predictions))
+
+
+    print("Script finished")
+
+
+
+classifier_model()
