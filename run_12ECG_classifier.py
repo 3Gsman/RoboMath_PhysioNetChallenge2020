@@ -30,6 +30,9 @@ def run_12ECG_classifier(data,header_data,classes,model):
     label = model.predict(feats_reshape)
     print("label")
     print(label)
+    label[0].tolist()
+    print("label2")
+    print(label[0])
     score = model.predict_proba(feats_reshape)
     print("score")
     print(score)
@@ -49,10 +52,14 @@ def run_12ECG_classifier(data,header_data,classes,model):
     for i in range(num_classes):
         print(i)
         current_score[i] = np.array(score[i][0][1])
-        print("current_score")
-        print(current_score[i])
     
-    return label, current_score
+
+    print(label[0])
+    print(type(label[0]))
+    print(current_score)
+    print(type(current_score))
+
+    return label[0], current_score
 
 def load_12ECG_model():
     # load the model from disk 
